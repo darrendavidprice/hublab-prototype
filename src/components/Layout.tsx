@@ -77,6 +77,9 @@ export function Layout({ children }: { children: ReactNode }) {
             <a href="https://www.manchester.ac.uk/about/privacy-information/data-protection/" target="_blank" rel="noopener noreferrer">University data protection</a>
             <a href="https://www.manchester.ac.uk/about/privacy-information/" target="_blank" rel="noopener noreferrer">University privacy information</a>
           </nav>
+          <p className="footer-version" style={{ opacity: 0.6, fontSize: 'var(--fs-200)', marginTop: 'var(--s-3)' }}>
+            Prototype build v{__APP_VERSION__} · {__BUILD_DATE__}
+          </p>
         </div>
       </footer>
     </>

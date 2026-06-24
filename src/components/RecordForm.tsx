@@ -11,6 +11,7 @@ import {
   type SaveIntent,
 } from '../lib/admin';
 import { fileToPreviewDataUrl, isDataUrl } from '../lib/image';
+import { fileToDataUrl } from '../lib/attachment';
 
 /** Fields that can carry a validation message. */
 type FieldKey =
@@ -85,6 +86,9 @@ export function RecordForm({
   const [imgBusy, setImgBusy] = useState(false);
   const [previewBroken, setPreviewBroken] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [resFileError, setResFileError] = useState<string | null>(null);
+  const [resFileBusy, setResFileBusy] = useState(false);
+  const resFileRef = useRef<HTMLInputElement>(null);
 
   const editingDraft = mode === 'edit' && initial.status === 'draft';
 
@@ -149,7 +153,7 @@ export function RecordForm({
     return {
       resource: {
         externalUrl: clean(f.resource?.externalUrl), fileUrl: clean(f.resource?.fileUrl),
-        fileLabel: clean(f.resource?.fileLabel), durationNote: clean(f.resource?.durationNote),
+        fileLabel: clean(f.resource?.fileLabel), fileName: clean(f.resource?.fileName), durationNote: clean(f.resource?.durationNote),
       },
       event: undefined, research: undefined,
     };
@@ -204,6 +208,23 @@ export function RecordForm({
   }
 
   const clearImage = () => { set({ promoImage: undefined }); setImgError(null); setPreviewBroken(false); };
+
+  async function onPickResourceFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResFileError(null); setResFileBusy(true);
+    try {
+      const picked = await fileToDataUrl(file);
+      setResource({ fileUrl: picked.dataUrl, fileName: picked.name, fileLabel: f.resource?.fileLabel?.trim() || picked.label });
+    } catch (err) {
+      setResFileError(err instanceof Error ? err.message : 'Couldn’t read that file.');
+    } finally {
+      setResFileBusy(false);
+      if (resFileRef.current) resFileRef.current.value = '';
+    }
+  }
+  const clearResourceFile = () => { setResource({ fileUrl: undefined, fileName: undefined }); setResFileError(null); };
+  const usingFileUpload = isDataUrl(f.resource?.fileUrl);
 
   const usingUpload = isDataUrl(f.promoImage);
   const summaryKeys = FIELD_ORDER.filter(k => summary[k]);
@@ -324,9 +345,34 @@ export function RecordForm({
           <legend>Link &amp; file</legend>
           <div><label htmlFor="rf-ext">External link (we link out)</label><input id="rf-ext" type="url" value={f.resource?.externalUrl ?? ''} onChange={e => setResource({ externalUrl: e.target.value })} /></div>
           <div className="row2">
-            <div><label htmlFor="rf-file">File link</label><input id="rf-file" type="url" value={f.resource?.fileUrl ?? ''} onChange={e => setResource({ fileUrl: e.target.value })} /></div>
+            <div>
+              <label htmlFor="rf-file">File link</label>
+              <input id="rf-file" type="url"
+                value={usingFileUpload ? '' : (f.resource?.fileUrl ?? '')}
+                disabled={usingFileUpload}
+                placeholder="https://… (link to a hosted file)"
+                onChange={e => setResource({ fileUrl: e.target.value })} />
+              {usingFileUpload && <span className="atable__meta">Using an uploaded file — remove it to type a link instead.</span>}
+            </div>
             <div><label htmlFor="rf-filelabel">File label</label><input id="rf-filelabel" type="text" placeholder="e.g. PDF, 2.4 MB" value={f.resource?.fileLabel ?? ''} onChange={e => setResource({ fileLabel: e.target.value })} /></div>
           </div>
+          <div>
+            <label htmlFor="rf-file-upload">…or attach a file to preview</label>
+            <input id="rf-file-upload" ref={resFileRef} type="file"
+              accept=".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp,.txt,.csv,.xlsx,application/pdf"
+              onChange={onPickResourceFile} />
+            <span className="atable__meta">Kept in your browser only for this demo (small files). The live site uploads to storage and keeps the link.</span>
+            {resFileBusy && <span className="atable__meta">Reading file…</span>}
+            {resFileError && <span className="field-error">{resFileError}</span>}
+          </div>
+          {usingFileUpload && (
+            <div className="rform-preview">
+              <p className="atable__meta" style={{ margin: 0 }}>
+                Attached: <strong>{f.resource?.fileName}</strong>{f.resource?.fileLabel ? ` (${f.resource.fileLabel})` : ''}
+              </p>
+              <button type="button" className="abtn" onClick={clearResourceFile}>Remove file</button>
+            </div>
+          )}
           <div><label htmlFor="rf-dur">Duration note</label><input id="rf-dur" type="text" placeholder="e.g. 12 min watch, 45 min activity" value={f.resource?.durationNote ?? ''} onChange={e => setResource({ durationNote: e.target.value })} /></div>
         </fieldset>
       )}

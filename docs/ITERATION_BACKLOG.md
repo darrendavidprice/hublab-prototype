@@ -19,6 +19,17 @@ _File:_ `components/MailingListSignup.tsx`.
   `components.css` (`.empty__actions`/`.empty__signup`). axe clean.
 - **Hero tagline.** H1 changed from "All our stuff, in one place." → **"See where curiosity
   takes you."** (eyebrow kept). _File:_ `routes/Home.tsx`.
+- **Single-form document attachment (simulated).** "Link & file" fieldset now takes an
+  uploaded PDF/Word/etc. (inline data URL, ~1.5 MB demo cap) alongside the URL field, shown
+  back as a named download on the record page. Mirrors the existing image-upload simulation;
+  prod swaps both for Supabase Storage. _Files:_ `lib/attachment.ts`, `components/RecordForm.tsx`,
+  `routes/RecordDetail.tsx`, `data/types.ts` (`ResourceDetails.fileName`). _Bulk import_ stays
+  URL-based (a CSV can't carry binaries) — net-new files come via the single form or an M365
+  file-upload question → SharePoint link. Open decision: **video hosting platform** (see
+  PROJECT_STATE "Media delivery").
+- **Build versioning.** `package.json` version → injected `__APP_VERSION__`/`__BUILD_DATE__`,
+  shown in footer; `docs/CHANGELOG.md` added; this build is **v0.7.0**. _Files:_ `vite.config.ts`,
+  `env.d.ts`, `tsconfig.node.json`, `components/Layout.tsx`.
 
 ---
 
@@ -125,6 +136,18 @@ See the proposal image for the target. All reversible, token-driven.
   - **MVP:** a "Request removal" affordance on the record + in the submission confirmation/email; submitter quotes the record + their email; admin **verifies the requester matches `submitter.email`**, then unpublishes/deletes. Add an admin "Removal requests" view.
   - **SSO era:** a signed-in author sees *their* submissions and can **request deletion**, which sets a `withdrawal_requested` flag/audit note — **not an instant hard delete**. Admin confirms → **soft-delete** (new `withdrawn` status: hidden from public, audit retained) → **hard purge on a retention schedule**.
   _Rationale:_ prevents accidental/abusive deletion, preserves audit integrity, and separates "content removal" from a **personal-data erasure** request (the latter routes through the UoM DPO process — see F1). _Files:_ new status in `types.ts` + `STATUS_META`, admin view, request affordance.
+
+- **E5 — Video embeds (unlisted YouTube, with Vimeo support).** ☐
+  _Decision (owner):_ video is **never self-hosted** — records hold a URL and the page embeds the
+  platform player (works on GitHub Pages today; it's just an iframe). **Unlisted YouTube** is the
+  primary route; **keep Vimeo possible** in the same component.
+  _Plan:_ a small `lib/video.ts` that parses a watch URL → provider + id (`youtube.com/watch?v=`,
+  `youtu.be/`, plus Vimeo `vimeo.com/<id>`), and a responsive 16:9 embed on the `video` record type
+  (and anywhere `resource.externalUrl` is a video). Use the privacy-friendly **`youtube-nocookie.com`**
+  domain; lazy-load the iframe; require a `title` for the iframe and surface a transcript/captions
+  note (WCAG 2.2 AA — video needs captions + a transcript). Fall back to the current "Watch the
+  video" out-link if the URL isn't a recognised provider. _Files:_ `lib/video.ts`,
+  `routes/RecordDetail.tsx` (video case), maybe a `VideoEmbed` component; `RecordForm` hint text.
 
 ---
 

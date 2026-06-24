@@ -67,6 +67,7 @@ export interface ResourceDetails {
   externalUrl?: string;  // external_link, video (embed/watch), citizen science
   fileUrl?: string;      // downloadable, teaching_guide, schools_resource
   fileLabel?: string;    // e.g. "PDF, 2.4 MB"
+  fileName?: string;     // original filename, used as the download name (esp. for inline data URLs)
   durationNote?: string; // e.g. "12 min watch", "45 min activity"
 }
 

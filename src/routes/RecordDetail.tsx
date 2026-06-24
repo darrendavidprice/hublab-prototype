@@ -226,7 +226,7 @@ function TypeBody({ record, onChange }: { record: HubRecord; onChange: (r: HubRe
           {record.resource?.fileUrl && (
             <div style={{ marginTop: 'var(--s-5)' }}>
               <a className="btn btn--primary btn--lg relative-link" href={record.resource.fileUrl}
-                onClick={downloadCount} download>
+                onClick={downloadCount} download={record.resource.fileName ?? ''}>
                 {record.type === 'teaching_guide' ? 'Download the guide' : 'Download the activity'}
                 {record.resource.fileLabel ? ` (${record.resource.fileLabel})` : ''}
               </a>

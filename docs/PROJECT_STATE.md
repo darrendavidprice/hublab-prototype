@@ -3,7 +3,7 @@
 **Read this first when resuming in a new session.** It records the decisions, the
 architecture, what is built, and what comes next. Updated at the end of every phase.
 
-_Last updated: end of Phase 5 — build complete. Post-Phase-5: Submission UX (§9); Visual direction V1–V6; F1 privacy page (draft, footer legal row); B2 clickable tags + C1/C2/C3 (calendar filters, pill toggles, expandable calendar). Latest session: A1 (real event photos — Home "Get to know us" band + FunLab "Real moments" strip), A2 (About page, in nav + footer), D1 (Add to Google/Outlook calendar links beside the .ics), B1 (logo home-link affordance, header + footer). Also fixed a mailing-list pre-check bug (wrong sub-brand pre-ticked). axe clean (0 violations) across all 11 routes. A/B/C/D series complete; **E2 (bulk import) done + E3 spec/template done** (`docs/IMPORT_TEMPLATE.md`, M365-Forms-compatible column contract). Also this session: hero tagline → "See where curiosity takes you."; the What's-on empty state now links into a pre-filtered `/find` + inline mailing-list signup instead of dead-ending. Remaining E-series: E1 (SSO/RLS, gated on tenant creds + region) and E4 (submitter removal), then G1/G2. Ordered remaining work + statuses live in `ITERATION_BACKLOG.md`; next-session prompt in `RESUME_PROMPT.md`; GitHub deploy steps in `DEPLOY_TO_GITHUB.md`._
+_Last updated: end of Phase 5 — build complete. Post-Phase-5: Submission UX (§9); Visual direction V1–V6; F1 privacy page (draft, footer legal row); B2 clickable tags + C1/C2/C3 (calendar filters, pill toggles, expandable calendar). Latest session: A1 (real event photos — Home "Get to know us" band + FunLab "Real moments" strip), A2 (About page, in nav + footer), D1 (Add to Google/Outlook calendar links beside the .ics), B1 (logo home-link affordance, header + footer). Also fixed a mailing-list pre-check bug (wrong sub-brand pre-ticked). axe clean (0 violations) across all 11 routes. A/B/C/D series complete; **E2 (bulk import) done + E3 spec/template done** (`docs/IMPORT_TEMPLATE.md`, M365-Forms-compatible column contract). Also this session: hero tagline → "See where curiosity takes you."; the What's-on empty state now links into a pre-filtered `/find` + inline mailing-list signup instead of dead-ending. Single-form document-attachment simulation added; build versioning introduced (footer shows v0.7.0, see CHANGELOG). Remaining E-series: E1 (SSO/RLS, gated on tenant creds + region) and E4 (submitter removal), then G1/G2. Ordered remaining work + statuses live in `ITERATION_BACKLOG.md`; next-session prompt in `RESUME_PROMPT.md`; GitHub deploy steps in `DEPLOY_TO_GITHUB.md`._
 
 ---
 
@@ -82,9 +82,31 @@ prototype → pilot → production by swapping the data layer (see WORDPRESS_MAP
   inline data URL for preview + the LocalStorage store. Swapped for a real upload (WP media /
   Supabase Storage) on platform; the form keeps only the resulting URL.
 - `src/lib/import.ts` — bulk-import engine (E2): dependency-free CSV/TSV parser, header
-  auto-mapping, per-row validation mirroring `RecordForm` + controlled-vocab checks with
-  suggestions, tolerant date parsing, and the CSV template/legend generators. Powers
-  `AdminImport`; the column contract is documented in `docs/IMPORT_TEMPLATE.md`.
+- `src/lib/attachment.ts` — client-side **document** attachment helper (PDF/Word/etc.):
+  reads a chosen file into an inline data URL (demo-only, ~1.5 MB cap because LocalStorage),
+  with an auto label and the original filename for the download. Same swap story as images —
+  the live build uploads to Supabase Storage and keeps only the URL, no UI change.
+
+### Media delivery (decisions)
+Three carriers, each handled differently — a static host (GitHub Pages) can't accept runtime
+uploads, so "uploads" in the deployed prototype are browser-only by design:
+- **Images** (promo/preview) — single form simulates upload via downscaled data URL
+  (`lib/image.ts`); prod = Supabase Storage. Bulk import references an **image URL**.
+- **Documents** (PDF preferred; Word/PPT only when the point is editing) — single form
+  simulates via `lib/attachment.ts`; prod = Supabase Storage bucket + signed/public URL.
+  Bulk import references a **file URL** (or an M365 file-upload answer → SharePoint link).
+- **Video** — **never self-hosted.** Records store a URL and the page links/embeds a
+  streaming platform (unlisted/public YouTube or Vimeo for public reach; Microsoft Stream
+  if SSO-gated). This is the only open decision — platform choice is institutional. Embedding
+  works on GitHub Pages today (it's just an iframe/link), so it's not blocked by hosting.
+  _Accessibility:_ video needs captions + a transcript; PDFs must be tagged (WCAG 2.2 AA).
+
+### Build versioning
+`package.json` `version` is the single source of truth, injected at build via
+`vite.config.ts` (`__APP_VERSION__`/`__BUILD_DATE__`) and shown in the footer. Scheme +
+history in `docs/CHANGELOG.md`: 0.x pre-pilot, minor = feature batch, patch = fix,
+**1.0.0 = DP-signed pilot**. Hand-off zips named `hublab-prototype-v<version>.zip`; tag git
+releases `v<version>`. Current: **v0.7.0**.
 - `src/components/Layout.tsx` — shell; responsive primary nav with an accessible mobile
   toggle (`aria-expanded`/`aria-controls`), skip link, scroll-reset on route change.
 - `src/components/StatusBadge.tsx` — status badge + `AuditTrail` (renders a record's history).
@@ -238,6 +260,15 @@ adapter via an env flag (`VITE_DATA_SOURCE=supabase|local`). **No UI changes req
 **D. Lifecycle automation.** Move `expiringSoon`/auto-expire to a Supabase scheduled Edge
 Function (cron): email owners N days before `expiry`, flip `live→expired` at `expiry`. The
 public `isPublic()` rule already enforces the date window read-side as a backstop.
+
+**D2. Storage (images + documents).** **Yes — Supabase hosts our files.** Create a Supabase
+**Storage** bucket (e.g. `media`) for promo images and downloadable docs (PDF/Word/etc.). The
+single form's simulated data-URL uploads (`lib/image.ts`, `lib/attachment.ts`) graduate to a real
+bucket upload that returns a **public URL** (open content) or a **signed URL** (restricted),
+stored on the record exactly as today — no UI change. Set a **size cap** + allowed MIME types on
+the bucket and an RLS policy so only authenticated staff can write. **Video stays external**
+(unlisted YouTube/Vimeo, E5) — don't put video in Storage (egress cost, no adaptive streaming).
+Recommend serving PDFs (tagged/accessible) for read-only docs; keep Word/PPT for editable assets.
 
 **E. Hosting (Vercel).** Import the repo; build `npm run build`, output `dist`. For richer
 share/SEO, consider migrating to Next.js later to get SSR/prerender for per-record Open Graph
