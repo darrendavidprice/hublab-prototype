@@ -11,6 +11,31 @@ runs in an effect keyed on the incoming pre-selection, so each lab page pre-tick
 _File:_ `components/MailingListSignup.tsx`.
 
 **Added this session (not backlog items):**
+- **Admin — preview submitted content (v0.9.0).** A "Preview" disclosure on the
+  moderation queue cards and the management tables shows the uploaded thumbnail
+  (flagging a missing image or missing alt text), the summary + a body excerpt, and
+  one-click access to the actual content — file download, Watch on YouTube/Vimeo +
+  an inline player, open link, research paper, booking page, and the public record
+  page. So a moderator can see exactly what was submitted without leaving admin.
+  _Files:_ `components/RecordPreview.tsx`, `routes/Admin.tsx`, `components.css` (`.recprev*`).
+- **Submission — stock imagery picker (v0.9.0).** `RecordForm` adds a "…or pick a
+  HubLab illustration" dropdown for submitters with no image of their own; choosing
+  one sets the promo image path, auto-fills its alt text (editable), and previews it.
+  Sits alongside upload + path; picking a stock clears any upload. _Files:_
+  `lib/stockImages.ts`, `components/RecordForm.tsx`.
+- **Content — new physics video (v0.9.0).** Seed `vid-standardmodel` ("What can the
+  Standard Model tell us about new physics?", a recorded LHC live talk, LifeLab +
+  FutureLab, Physics) embedding the supplied YouTube URL via E5. _File:_ `data/seed.ts`.
+- **Schools-resource content fix (v0.8.0).** A `schools_resource` record used to render a
+  fixed "schools outreach is run by the Schools & Colleges team — we point you to
+  them rather than hosting it here" notice *instead of* the record (the seed example
+  had no body, so the page was just the notice + a link). Submitted content must
+  always appear, so the `schools_resource` detail case now renders body + optional
+  file download + optional out-link like any other resource, with no content-
+  suppressing notice. Audited every `.notice` and "signpost" string — no other type
+  suppresses a record; the rest are supplementary (expiry heads-up, event capacity,
+  privacy draft banner, cross-category note). Seed `sch-stemclub` gained a real body.
+  _Files:_ `routes/RecordDetail.tsx`, `data/seed.ts`.
 - **Calendar empty state, dead-end fix.** When no events match on *What's on*, the empty
   state now offers a way forward: a **"See other stuff for these filters"** button carrying the
   active filters into `/find` (the calendar sets no type facet, so it surfaces activities/videos/
@@ -137,17 +162,28 @@ See the proposal image for the target. All reversible, token-driven.
   - **SSO era:** a signed-in author sees *their* submissions and can **request deletion**, which sets a `withdrawal_requested` flag/audit note — **not an instant hard delete**. Admin confirms → **soft-delete** (new `withdrawn` status: hidden from public, audit retained) → **hard purge on a retention schedule**.
   _Rationale:_ prevents accidental/abusive deletion, preserves audit integrity, and separates "content removal" from a **personal-data erasure** request (the latter routes through the UoM DPO process — see F1). _Files:_ new status in `types.ts` + `STATUS_META`, admin view, request affordance.
 
-- **E5 — Video embeds (unlisted YouTube, with Vimeo support).** ☐
-  _Decision (owner):_ video is **never self-hosted** — records hold a URL and the page embeds the
-  platform player (works on GitHub Pages today; it's just an iframe). **Unlisted YouTube** is the
-  primary route; **keep Vimeo possible** in the same component.
-  _Plan:_ a small `lib/video.ts` that parses a watch URL → provider + id (`youtube.com/watch?v=`,
-  `youtu.be/`, plus Vimeo `vimeo.com/<id>`), and a responsive 16:9 embed on the `video` record type
-  (and anywhere `resource.externalUrl` is a video). Use the privacy-friendly **`youtube-nocookie.com`**
-  domain; lazy-load the iframe; require a `title` for the iframe and surface a transcript/captions
-  note (WCAG 2.2 AA — video needs captions + a transcript). Fall back to the current "Watch the
-  video" out-link if the URL isn't a recognised provider. _Files:_ `lib/video.ts`,
-  `routes/RecordDetail.tsx` (video case), maybe a `VideoEmbed` component; `RecordForm` hint text.
+- **E5 — Video embeds (unlisted YouTube, with Vimeo support).** ☑ **Done.**
+  `src/lib/video.ts` (`parseVideoUrl` / `isEmbeddableVideo`) turns a watch URL into
+  `{ provider, id, embedUrl }` for **YouTube** (`watch?v=`, `youtu.be/`, `/embed/`,
+  `/shorts/`, `/live/`, `m.youtube.com`, `youtube-nocookie.com`; extra query params
+  tolerated; missing scheme tolerated) and **Vimeo** (`vimeo.com/<id>`,
+  `/channels/<name>/<id>`, unlisted `<id>/<hash>`, `player.vimeo.com/video/<id>`).
+  New `components/VideoEmbed.tsx` renders a responsive **16:9** (`aspect-ratio`),
+  **lazy-loaded** iframe with a descriptive **`title`**, `allowfullscreen`, a tight
+  `referrerpolicy`, and a **captions/transcript note** (WCAG 2.2 AA — 1.2.2/1.2.3).
+  YouTube embeds via **`youtube-nocookie.com`** (`rel=0`); Vimeo via `dnt=1`. Wired
+  into `RecordDetail` for the `video` type **and** any type whose
+  `resource.externalUrl` parses as a video (activity, external_link, etc.);
+  unrecognised URLs fall back to the existing **"Watch the video"** out-link.
+  `RecordForm` shows a hint on the video link field. Seed `vid-materials` now uses a
+  real UoM YouTube URL so the embed is demonstrable; Vimeo paths verified via the
+  parser. Parser verified across all URL shapes + non-video fallbacks; axe 0 on the
+  video detail (desktop + mobile) and the submission form. _Files:_ `lib/video.ts`,
+  `components/VideoEmbed.tsx`, `routes/RecordDetail.tsx`, `components/RecordForm.tsx`,
+  `styles/components.css` (`.video-embed*`), `data/seed.ts`.
+  _Prod notes:_ embedding is just an iframe (works on Pages today); platform choice
+  stays institutional (unlisted YouTube primary, Microsoft Stream if SSO-gated).
+  Captions live on the player; a real transcript per video is a content task.
 
 ---
 
@@ -175,8 +211,8 @@ See the proposal image for the target. All reversible, token-driven.
 ## Suggested order
 V1–V3 ☑ → A1 ☑ / A2 ☑ → B1 ☐ / B2 ☑ → C1 ☑ / C2 ☑ → D1 ☑ → F1 ◐ (privacy — unblocks pilot) → E1 (auth) → E2/E3 (import + M365) → E4 (deletion) → G1/G2 (audits, then ongoing). V4–V6 fold in alongside.
 
-**Next up:** A/B/C/D complete; **E2 done**, **E3 spec/template done**. Remaining in the E-series:
-**E1** (Entra SSO + RLS — needs tenant creds + region) and **E4** (submitter-initiated removal —
-buildable now against the seam), then **G1/G2** audits. F1 stays ◐ pending University DP sign-off.
-Optional polish in PROJECT_STATE §9 can slot in anywhere; FutureLab/LifeLab still have no "real
-moments" photo strip (only FunLab).
+**Next up:** A/B/C/D complete; **E2 done**, **E3 spec/template done**, **E5 done**.
+Remaining in the E-series: **E1** (Entra SSO + RLS — needs tenant creds + region) and
+**E4** (submitter-initiated removal — buildable now against the seam), then **G1/G2**
+audits. F1 stays ◐ pending University DP sign-off. Optional polish in PROJECT_STATE §9
+can slot in anywhere; FutureLab/LifeLab still have no "real moments" photo strip (only FunLab).

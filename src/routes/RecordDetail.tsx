@@ -7,6 +7,8 @@ import {
 } from '../data/vocabularies';
 import { RecordCard } from '../components/RecordCard';
 import { EngagementBar } from '../components/EngagementBar';
+import { VideoEmbed } from '../components/VideoEmbed';
+import { isEmbeddableVideo } from '../lib/video';
 import { formatEventWhen, formatDate } from '../lib/format';
 import { eventToIcs, downloadText } from '../lib/ics';
 import { googleCalendarUrl, outlookCalendarUrl } from '../lib/calendarLinks';
@@ -207,11 +209,13 @@ function TypeBody({ record, onChange }: { record: HubRecord; onChange: (r: HubRe
         <div className="prose">
           {record.body && <p>{record.body}</p>}
           <p>{record.resource?.durationNote ?? 'Short watch.'}</p>
-          {record.resource?.externalUrl && (
-            <div style={{ marginTop: 'var(--s-5)' }}>
-              <OutLink href={record.resource.externalUrl}>Watch the video</OutLink>
-            </div>
-          )}
+          <VideoEmbed
+            url={record.resource?.externalUrl}
+            title={record.title}
+            fallback={record.resource?.externalUrl
+              ? <div style={{ marginTop: 'var(--s-5)' }}><OutLink href={record.resource.externalUrl}>Watch the video</OutLink></div>
+              : null}
+          />
         </div>
       );
 
@@ -255,18 +259,33 @@ function TypeBody({ record, onChange }: { record: HubRecord; onChange: (r: HubRe
         <div className="prose">
           {record.body ? record.body.split('\n\n').map((p, i) => <p key={i}>{p}</p>) : <p>{record.summary}</p>}
           {record.resource?.externalUrl && (
-            <div style={{ marginTop: 'var(--s-5)' }}><OutLink href={record.resource.externalUrl}>Get started</OutLink></div>
+            isEmbeddableVideo(record.resource.externalUrl)
+              ? <VideoEmbed url={record.resource.externalUrl} title={record.title} />
+              : <div style={{ marginTop: 'var(--s-5)' }}><OutLink href={record.resource.externalUrl}>Get started</OutLink></div>
           )}
         </div>
       );
 
     case 'schools_resource':
+      // Schools resources are hosted and shown like any other resource: the
+      // submitted content always appears. (We no longer replace the record with
+      // a "we point you elsewhere" signpost.) Surface whatever the record carries
+      // — body, a downloadable file, and/or an out-link — same as a downloadable.
       return (
         <div className="prose">
-          {record.body && <p>{record.body}</p>}
-          <p className="notice">Schools outreach is run by the University's Schools &amp; Colleges team — we point you to them rather than hosting it here.</p>
+          {record.body
+            ? record.body.split('\n\n').map((p, i) => <p key={i}>{p}</p>)
+            : <p>{record.summary}</p>}
+          {record.resource?.fileUrl && (
+            <div style={{ marginTop: 'var(--s-5)' }}>
+              <a className="btn btn--primary btn--lg relative-link" href={record.resource.fileUrl}
+                onClick={downloadCount} download={record.resource.fileName ?? ''}>
+                Download the resource{record.resource.fileLabel ? ` (${record.resource.fileLabel})` : ''}
+              </a>
+            </div>
+          )}
           {record.resource?.externalUrl && (
-            <div style={{ marginTop: 'var(--s-5)' }}><OutLink href={record.resource.externalUrl}>Go to Schools &amp; Colleges</OutLink></div>
+            <div style={{ marginTop: 'var(--s-5)' }}><OutLink href={record.resource.externalUrl}>Open the resource</OutLink></div>
           )}
         </div>
       );
@@ -284,7 +303,9 @@ function TypeBody({ record, onChange }: { record: HubRecord; onChange: (r: HubRe
         <div className="prose">
           {record.body && <p>{record.body}</p>}
           {record.resource?.externalUrl && (
-            <div style={{ marginTop: 'var(--s-5)' }}><OutLink href={record.resource.externalUrl}>{cta}</OutLink></div>
+            isEmbeddableVideo(record.resource.externalUrl)
+              ? <VideoEmbed url={record.resource.externalUrl} title={record.title} />
+              : <div style={{ marginTop: 'var(--s-5)' }}><OutLink href={record.resource.externalUrl}>{cta}</OutLink></div>
           )}
         </div>
       );

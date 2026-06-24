@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, isPublic, daysToExpiry } from '../data/api';
 import type { HubRecord, RecordStatus } from '../data/types';
 import { RECORD_TYPES, SUB_BRANDS } from '../data/vocabularies';
 import { StatusBadge, AuditTrail } from '../components/StatusBadge';
+import { RecordPreview } from '../components/RecordPreview';
 import { ADMIN_ACTOR, QUEUE_STATUSES } from '../lib/admin';
 import { formatDateShort } from '../lib/format';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -122,6 +123,10 @@ export function Admin() {
                   {r.submitter.department ? ` · ${r.submitter.department}` : ''}
                 </p>
                 <p style={{ margin: 0 }}>{r.summary}</p>
+                <details className="recprev-disclosure">
+                  <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 'var(--fs-200)' }}>Preview submitted content</summary>
+                  <div style={{ marginTop: 'var(--s-3)' }}><RecordPreview record={r} /></div>
+                </details>
                 {r.audit.length > 0 && (
                   <details>
                     <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 'var(--fs-200)' }}>History</summary>
@@ -181,6 +186,7 @@ function ManageTable({
     submitForReview: (r: HubRecord) => void;
   };
 }) {
+  const [openPreview, setOpenPreview] = useState<string | null>(null);
   if (rows.length === 0) return <div className="empty"><h3>All clear</h3><p>{empty}</p></div>;
   return (
     <table className="atable">
@@ -191,7 +197,8 @@ function ManageTable({
         {rows.map(r => {
           const dte = daysToExpiry(r);
           return (
-            <tr key={r.id}>
+            <Fragment key={r.id}>
+            <tr>
               <td>
                 <Link to={`/record/${r.id}`} className="atable__title">{r.title}</Link>
                 <div className="atable__meta">{RECORD_TYPES[r.type].noun} · {r.audiences.map(a => SUB_BRANDS[a].label).join(', ')}{r.featured ? ' · ★ featured' : ''}</div>
@@ -209,6 +216,7 @@ function ManageTable({
                   {r.status === 'unpublished' && <button className="abtn abtn--go" onClick={() => actions.republish(r)}>Republish</button>}
                   {(r.status === 'expired' || (isPublic(r) && dte >= 0 && dte <= 14)) && <button className="abtn abtn--go" onClick={() => actions.renew(r)}>Renew</button>}
                   {(r.status === 'submitted' || r.status === 'needs_clarification') && <button className="abtn abtn--go" onClick={() => actions.approve(r)}>Approve</button>}
+                  <button className="abtn" onClick={() => setOpenPreview(openPreview === r.id ? null : r.id)} aria-expanded={openPreview === r.id}>Preview</button>
                   <button className="abtn" onClick={() => actions.featureToggle(r)}>{r.featured ? 'Unfeature' : 'Feature'}</button>
                   <button className="abtn" onClick={() => onEdit(r)}>Edit</button>
                   <button className="abtn" onClick={() => setOpenAudit(openAudit === r.id ? null : r.id)} aria-expanded={openAudit === r.id}>History</button>
@@ -217,6 +225,12 @@ function ManageTable({
                 {openAudit === r.id && <div style={{ marginTop: 'var(--s-3)' }}><AuditTrail record={r} /></div>}
               </td>
             </tr>
+            {openPreview === r.id && (
+              <tr className="atable__previewrow">
+                <td colSpan={4}><RecordPreview record={r} /></td>
+              </tr>
+            )}
+            </Fragment>
           );
         })}
       </tbody>

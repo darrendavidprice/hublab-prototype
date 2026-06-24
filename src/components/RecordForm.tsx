@@ -12,6 +12,7 @@ import {
 } from '../lib/admin';
 import { fileToPreviewDataUrl, isDataUrl } from '../lib/image';
 import { fileToDataUrl } from '../lib/attachment';
+import { STOCK_IMAGES, stockByPath } from '../lib/stockImages';
 
 /** Fields that can carry a validation message. */
 type FieldKey =
@@ -209,6 +210,17 @@ export function RecordForm({
 
   const clearImage = () => { set({ promoImage: undefined }); setImgError(null); setPreviewBroken(false); };
 
+  /** Choosing a stock illustration sets the image path and fills in its alt
+   *  text (the submitter can still edit it). Clears any uploaded preview, since
+   *  the path replaces the inline data URL. */
+  const pickStock = (path: string) => {
+    if (!path) { clearImage(); return; }
+    const s = stockByPath(path);
+    setImgError(null); setPreviewBroken(false);
+    if (fileRef.current) fileRef.current.value = '';
+    set({ promoImage: path, promoImageAlt: s?.alt ?? f.promoImageAlt });
+  };
+
   async function onPickResourceFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -343,7 +355,11 @@ export function RecordForm({
       {f.type !== 'event' && f.type !== 'research_explainer' && (
         <fieldset>
           <legend>Link &amp; file</legend>
-          <div><label htmlFor="rf-ext">External link (we link out)</label><input id="rf-ext" type="url" value={f.resource?.externalUrl ?? ''} onChange={e => setResource({ externalUrl: e.target.value })} /></div>
+          <div>
+            <label htmlFor="rf-ext">External link (we link out)</label>
+            <input id="rf-ext" type="url" value={f.resource?.externalUrl ?? ''} onChange={e => setResource({ externalUrl: e.target.value })} />
+            {f.type === 'video' && <span className="atable__meta">Paste a YouTube or Vimeo link (an unlisted YouTube link works) and we’ll embed the player right here. Any other link shows a “Watch the video” button instead.</span>}
+          </div>
           <div className="row2">
             <div>
               <label htmlFor="rf-file">File link</label>
@@ -393,6 +409,14 @@ export function RecordForm({
           <span className="atable__meta">Previewed in your browser only. In the live site this uploads to the media library; here we keep a small inline copy.</span>
           {imgBusy && <span className="atable__meta">Processing image…</span>}
           {imgError && <span className="field-error">{imgError}</span>}
+        </div>
+        <div>
+          <label htmlFor="rf-stock">…or pick a HubLab illustration</label>
+          <select id="rf-stock" value={stockByPath(f.promoImage)?.path ?? ''} onChange={e => pickStock(e.target.value)}>
+            <option value="">No stock image</option>
+            {STOCK_IMAGES.map(s => <option key={s.path} value={s.path}>{s.label}</option>)}
+          </select>
+          <span className="atable__meta">No image of your own? Choose one of our brand illustrations — we’ll fill in a description for you.</span>
         </div>
         {f.promoImage && (
           <div className="rform-preview">

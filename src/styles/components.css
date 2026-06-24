@@ -679,3 +679,44 @@
   .import-maprow { grid-template-columns: 1fr; }
   .import-reviewbar { position: static; }
 }
+
+/* ---- Video embed (E5) ---- */
+/* Responsive 16:9 frame; the iframe fills it. Rounded to match the type's
+   detail surfaces; capped width so it doesn't dominate a long-form body. */
+.video-embed { margin-top: var(--s-5); max-width: 760px; }
+.video-embed__frame {
+  position: relative; aspect-ratio: 16 / 9; width: 100%;
+  background: #000; border-radius: var(--r-lg); overflow: hidden;
+  border: 1px solid var(--c-line);
+}
+.video-embed__frame iframe {
+  position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block;
+}
+.video-embed__note { margin: var(--s-3) 0 0; font-size: var(--fs-300); color: #5b5170; }
+
+/* ---- Admin record preview (submitted-content review) ---- */
+.recprev {
+  background: #fff; border: 1px solid var(--c-line); border-radius: var(--r-md);
+  padding: var(--s-4); display: grid; gap: var(--s-4);
+}
+.atable__previewrow > td { background: var(--c-paper-2); padding: var(--s-3) var(--s-4); }
+.recprev__grid { display: grid; grid-template-columns: 120px 1fr; gap: var(--s-4); align-items: start; }
+.recprev__thumb {
+  width: 120px; height: 120px; border-radius: var(--r-md); overflow: hidden;
+  background: var(--c-paper-2); border: 1px solid var(--c-line);
+  display: flex; align-items: center; justify-content: center;
+}
+.recprev__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.recprev__noimg { color: #5b5170; font-size: var(--fs-200); text-align: center; padding: var(--s-2); }
+.recprev__body { min-width: 0; }
+.recprev__imgmeta { margin: 0 0 var(--s-2); }
+.recprev__summary { margin: 0 0 var(--s-2); font-weight: 600; }
+.recprev__bodytext { margin: 0; }
+.recprev__access { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+.recprev__video { max-width: 560px; }
+.recprev-disclosure summary { color: var(--c-hublab); }
+
+@media (max-width: 560px) {
+  .recprev__grid { grid-template-columns: 1fr; }
+  .recprev__thumb { width: 100%; height: 160px; }
+}

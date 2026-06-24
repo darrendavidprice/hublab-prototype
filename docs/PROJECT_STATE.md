@@ -3,7 +3,7 @@
 **Read this first when resuming in a new session.** It records the decisions, the
 architecture, what is built, and what comes next. Updated at the end of every phase.
 
-_Last updated: end of Phase 5 — build complete. Post-Phase-5: Submission UX (§9); Visual direction V1–V6; F1 privacy page (draft, footer legal row); B2 clickable tags + C1/C2/C3 (calendar filters, pill toggles, expandable calendar). Latest session: A1 (real event photos — Home "Get to know us" band + FunLab "Real moments" strip), A2 (About page, in nav + footer), D1 (Add to Google/Outlook calendar links beside the .ics), B1 (logo home-link affordance, header + footer). Also fixed a mailing-list pre-check bug (wrong sub-brand pre-ticked). axe clean (0 violations) across all 11 routes. A/B/C/D series complete; **E2 (bulk import) done + E3 spec/template done** (`docs/IMPORT_TEMPLATE.md`, M365-Forms-compatible column contract). Also this session: hero tagline → "See where curiosity takes you."; the What's-on empty state now links into a pre-filtered `/find` + inline mailing-list signup instead of dead-ending. Single-form document-attachment simulation added; build versioning introduced (footer shows v0.7.0, see CHANGELOG). Remaining E-series: E1 (SSO/RLS, gated on tenant creds + region) and E4 (submitter removal), then G1/G2. Ordered remaining work + statuses live in `ITERATION_BACKLOG.md`; next-session prompt in `RESUME_PROMPT.md`; GitHub deploy steps in `DEPLOY_TO_GITHUB.md`._
+_Last updated: end of Phase 5 — build complete. Post-Phase-5: Submission UX (§9); Visual direction V1–V6; F1 privacy page (draft, footer legal row); B2 clickable tags + C1/C2/C3 (calendar filters, pill toggles, expandable calendar). A1 (real event photos), A2 (About page), D1 (Google/Outlook calendar links), B1 (logo home-link affordance). A/B/C/D series complete; **E2 (bulk import) done + E3 spec/template done**. Latest session (**v0.8.0**): **E5 — video embeds** (`lib/video.ts` URL→provider+id for YouTube + Vimeo; `VideoEmbed` responsive 16:9 lazy iframe via youtube-nocookie/Vimeo dnt, with iframe title + captions/transcript note; on the `video` type and any video `externalUrl`; falls back to the "Watch the video" out-link), and a **schools-resource content fix** (a `schools_resource` no longer shows a "we point you elsewhere" notice instead of the record — submitted content always appears). axe clean (0 violations) across touched routes. Next session (**v0.9.0**): **admin content preview** (a Preview disclosure on the queue cards + management tables shows the thumbnail and one-click access to the file/video/link — `components/RecordPreview.tsx`), a **submission-form stock-imagery picker** (pick a brand illustration when you have no image of your own — `lib/stockImages.ts`), and a new **physics video** seed record. Remaining E-series: E1 (SSO/RLS, gated on tenant creds + region) and E4 (submitter removal), then G1/G2 audits. Ordered remaining work + statuses live in `ITERATION_BACKLOG.md`; next-session prompt in `RESUME_PROMPT.md`; GitHub deploy steps in `DEPLOY_TO_GITHUB.md`._
 
 ---
 
@@ -86,6 +86,14 @@ prototype → pilot → production by swapping the data layer (see WORDPRESS_MAP
   reads a chosen file into an inline data URL (demo-only, ~1.5 MB cap because LocalStorage),
   with an auto label and the original filename for the download. Same swap story as images —
   the live build uploads to Supabase Storage and keeps only the URL, no UI change.
+- `src/lib/video.ts` — video URL helper (E5): `parseVideoUrl` turns a pasted watch URL into
+  `{ provider, id, embedUrl }` for YouTube (watch/youtu.be/embed/shorts/live, m. + no-cookie
+  domains) and Vimeo (vimeo.com/<id>, /channels/<name>/<id>, unlisted <id>/<hash>,
+  player.vimeo.com). Privacy-friendly embeds: YouTube via `youtube-nocookie.com`, Vimeo via
+  `dnt=1`. Pure parsing, no fetch; `isEmbeddableVideo` is the convenience predicate.
+- `src/lib/stockImages.ts` — curated brand-illustration catalogue (`STOCK_IMAGES`: path +
+  label + ready-made alt) offered in the submission form when a submitter has no promo image
+  of their own. Paths use the same `./brand/…` form as the seed.
 
 ### Media delivery (decisions)
 Three carriers, each handled differently — a static host (GitHub Pages) can't accept runtime
@@ -106,7 +114,7 @@ uploads, so "uploads" in the deployed prototype are browser-only by design:
 `vite.config.ts` (`__APP_VERSION__`/`__BUILD_DATE__`) and shown in the footer. Scheme +
 history in `docs/CHANGELOG.md`: 0.x pre-pilot, minor = feature batch, patch = fix,
 **1.0.0 = DP-signed pilot**. Hand-off zips named `hublab-prototype-v<version>.zip`; tag git
-releases `v<version>`. Current: **v0.7.0**.
+releases `v<version>`. Current: **v0.9.0**.
 - `src/components/Layout.tsx` — shell; responsive primary nav with an accessible mobile
   toggle (`aria-expanded`/`aria-controls`), skip link, scroll-reset on route change.
 - `src/components/StatusBadge.tsx` — status badge + `AuditTrail` (renders a record's history).
@@ -126,6 +134,12 @@ releases `v<version>`. Current: **v0.7.0**.
 - `src/components/MonthCalendar.tsx` — accessible month-grid table; loads each month via
   the data layer's `eventsBetween` query.
 - `src/components/EngagementBar.tsx` — controlled thumbs/rating/counts; writes via `api.update`.
+- `src/components/VideoEmbed.tsx` — responsive 16:9, lazy-loaded video embed (E5): YouTube
+  (no-cookie) / Vimeo iframe with a descriptive `title` + captions/transcript note; falls back to
+  a "Watch the video" out-link for unrecognised URLs. Used by `RecordDetail`.
+- `src/components/RecordPreview.tsx` — admin-side preview of a submission: thumbnail (flags
+  missing image / missing alt), summary + body excerpt, and one-click content access (file
+  download, Watch on YouTube/Vimeo + inline embed, open link, paper, booking). Used by `Admin`.
 - `src/components/MailingListSignup.tsx` — front-of-house signup UI (tag prefs → ESP groups);
   optional `initialPrefs` pre-selects a lab on sub-brand pages.
 - `src/components/SubBrandHero.tsx` — typographic, colour-led hero for a lab page (theme glow
@@ -137,6 +151,9 @@ releases `v<version>`. Current: **v0.7.0**.
 - `src/routes/RecordDetail.tsx` — `/record/:id`; per-type body layouts, factbox, engagement,
   related strip, view-count increment, friendly unavailable state. Event layout includes an
   accessible "Add to your calendar" `<fieldset>` group: `.ics` download + Google + Outlook links (D1).
+  Video type (and any video `externalUrl`) renders `VideoEmbed` (E5), out-link fallback otherwise.
+  `schools_resource` is hosted like any other resource — its submitted content always shows (no
+  "we point you elsewhere" notice).
 - `src/routes/About.tsx` — `/about`; paraphrased about-us page (mission, ScienceX heritage,
   spark-of-fascination framing, three-labs summary, contact). Overlap-safe `.mediaband` image+text
   splits using event photos. Linked from primary nav + footer.
@@ -147,7 +164,8 @@ releases `v<version>`. Current: **v0.7.0**.
 - `src/routes/Admin.tsx` — `/admin`; moderation queue (approve / send back / reject with a
   note), management tables (unpublish / republish / make-live / feature / delete / **submit a
   draft for review**), an expiry tab (expiring-soon reminders + expired → renew), stat tiles,
-  and per-record audit history. Reads the whole set via `api.list()` and buckets by status
+  and per-record audit history. A **Preview** disclosure (queue + tables) shows the submitted
+  thumbnail + one-click access to the file/video/link (`RecordPreview`). Reads the whole set via `api.list()` and buckets by status
   (drafts surface in the All-content tab; keeps the public query lean).
 - `src/routes/AdminRecordForm.tsx` — `/admin/new` and `/admin/edit/:id`; hosts `RecordForm`,
   routes saves through `api.create` / `api.update` (+ a draft→`submitted` `transition` when a
